@@ -11,6 +11,9 @@
 #include "..\interactivity\inc\ServiceLocator.hpp"
 #include "..\types\inc\convert.hpp"
 
+using Microsoft::Console::Interactivity::ServiceLocator;
+using Microsoft::Console::VirtualTerminal::VtIo;
+
 CONSOLE_INFORMATION::CONSOLE_INFORMATION() :
     // ProcessHandleList initializes itself
     pInputBuffer(nullptr),
@@ -32,7 +35,6 @@ CONSOLE_INFORMATION::CONSOLE_INFORMATION() :
     // OutputCPInfo initialized below
     _cookedReadData(nullptr),
     ConsoleIme{},
-    terminalMouseInput(HandleTerminalKeyEventCallback),
     _vtIo(),
     _blinker{},
     renderData{}
@@ -54,19 +56,19 @@ bool CONSOLE_INFORMATION::IsConsoleLocked() const
     return _csConsoleLock.OwningThread == (HANDLE)GetCurrentThreadId();
 }
 
-#pragma prefast(suppress:26135, "Adding lock annotation spills into entire project. Future work.")
+#pragma prefast(suppress : 26135, "Adding lock annotation spills into entire project. Future work.")
 void CONSOLE_INFORMATION::LockConsole()
 {
     EnterCriticalSection(&_csConsoleLock);
 }
 
-#pragma prefast(suppress:26135, "Adding lock annotation spills into entire project. Future work.")
+#pragma prefast(suppress : 26135, "Adding lock annotation spills into entire project. Future work.")
 bool CONSOLE_INFORMATION::TryLockConsole()
 {
     return !!TryEnterCriticalSection(&_csConsoleLock);
 }
 
-#pragma prefast(suppress:26135, "Adding lock annotation spills into entire project. Future work.")
+#pragma prefast(suppress : 26135, "Adding lock annotation spills into entire project. Future work.")
 void CONSOLE_INFORMATION::UnlockConsole()
 {
     LeaveCriticalSection(&_csConsoleLock);
@@ -85,8 +87,7 @@ ULONG CONSOLE_INFORMATION::GetCSRecursionCount()
 // - title - Window Title to display
 // Return Value:
 // - STATUS_SUCCESS if successful.
-[[nodiscard]]
-NTSTATUS CONSOLE_INFORMATION::AllocateConsole(const std::wstring_view title)
+[[nodiscard]] NTSTATUS CONSOLE_INFORMATION::AllocateConsole(const std::wstring_view title)
 {
     CONSOLE_INFORMATION& gci = ServiceLocator::LocateGlobals().getConsoleInformation();
     // Synchronize flags
@@ -105,7 +106,7 @@ NTSTATUS CONSOLE_INFORMATION::AllocateConsole(const std::wstring_view title)
     {
         gci.pInputBuffer = new InputBuffer();
     }
-    catch(...)
+    catch (...)
     {
         return NTSTATUS_FROM_HRESULT(wil::ResultFromCaughtException());
     }
@@ -176,18 +177,6 @@ COOKED_READ_DATA& CONSOLE_INFORMATION::CookedReadData() noexcept
 void CONSOLE_INFORMATION::SetCookedReadData(COOKED_READ_DATA* readData) noexcept
 {
     _cookedReadData = readData;
-}
-
-// Routine Description:
-// - Handler for inserting key sequences into the buffer when the terminal emulation layer
-//   has determined a key can be converted appropriately into a sequence of inputs
-// Arguments:
-// - events - the input events to write to the input buffer
-// Return Value:
-// - <none>
-void CONSOLE_INFORMATION::HandleTerminalKeyEventCallback(_Inout_ std::deque<std::unique_ptr<IInputEvent>>& events)
-{
-    ServiceLocator::LocateGlobals().getConsoleInformation().pInputBuffer->Write(events);
 }
 
 // Method Description:
@@ -270,7 +259,7 @@ void CONSOLE_INFORMATION::SetTitle(const std::wstring_view newTitle)
 
 // Method Description:
 // - Set the console title's prefix, and trigger a renderer update of the title.
-//      This is the part of the title shuch as "Mark", "Select", or "Scroll"
+//      This is the part of the title such as "Mark", "Select", or "Scroll"
 // Arguments:
 // - newTitlePrefix: The new value to use for the title prefix
 // Return Value:
@@ -367,22 +356,22 @@ Microsoft::Console::CursorBlinker& CONSOLE_INFORMATION::GetCursorBlinker() noexc
 }
 
 // Method Description:
-// - Generates a CHAR_INFO for this output cell, using our
-//      GenerateLegacyAttributes method to generate the legacy style attributes.
+// - Generates a CHAR_INFO for this output cell, using the TextAttribute
+//      GetLegacyAttributes method to generate the legacy style attributes.
 // Arguments:
 // - cell: The cell to get the CHAR_INFO from
 // Return Value:
 // - a CHAR_INFO containing legacy information about the cell
 CHAR_INFO CONSOLE_INFORMATION::AsCharInfo(const OutputCellView& cell) const noexcept
 {
-    CHAR_INFO ci { 0 };
+    CHAR_INFO ci{ 0 };
     ci.Char.UnicodeChar = Utf16ToUcs2(cell.Chars());
 
     // If the current text attributes aren't legacy attributes, then
     //    use gci to look up the correct legacy attributes to use
     //    (for mapping RGB values to the nearest table value)
     const auto& attr = cell.TextAttr();
-    ci.Attributes = GenerateLegacyAttributes(attr);;
+    ci.Attributes = attr.GetLegacyAttributes();
     ci.Attributes |= cell.DbcsAttr().GeneratePublicApiAttributeFormat();
     return ci;
 }

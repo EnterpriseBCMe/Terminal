@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation. 
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
 #pragma once
@@ -17,17 +17,23 @@ namespace Microsoft::Console::VirtualTerminal::DispatchTypes
     {
         Off = 0,
         BoldBright = 1,
-        RGBColor = 2,
-        // 2 is also Faint, decreased intensity (ISO 6429).
+        // The 2 and 5 entries here are for BOTH the extended graphics options,
+        // as well as the Faint/Blink options.
+        RGBColorOrFaint = 2, // 2 is also Faint, decreased intensity (ISO 6429).
+        Italics = 3,
         Underline = 4,
-        Xterm256Index = 5,
-        // 5 is also Blink (appears as Bold).
-        // the 2 and 5 entries here are only for the extended graphics options
-        // as we do not currently support those features individually
+        BlinkOrXterm256Index = 5, // 5 is also Blink (appears as Bold).
         Negative = 7,
-        UnBold = 22,
+        Invisible = 8,
+        CrossedOut = 9,
+        DoublyUnderlined = 21,
+        NotBoldOrFaint = 22,
+        NotItalics = 23,
         NoUnderline = 24,
-        Positive = 27,
+        Steady = 25, // _not_ blink
+        Positive = 27, // _not_ inverse
+        Visible = 28, // _not_ invisible
+        NotCrossedOut = 29,
         ForegroundBlack = 30,
         ForegroundRed = 31,
         ForegroundGreen = 32,
@@ -48,6 +54,8 @@ namespace Microsoft::Console::VirtualTerminal::DispatchTypes
         BackgroundWhite = 47,
         BackgroundExtended = 48,
         BackgroundDefault = 49,
+        Overline = 53,
+        NoOverline = 55,
         BrightForegroundBlack = 90,
         BrightForegroundRed = 91,
         BrightForegroundGreen = 92,
@@ -68,28 +76,41 @@ namespace Microsoft::Console::VirtualTerminal::DispatchTypes
 
     enum class AnsiStatusType : unsigned int
     {
+        OS_OperatingStatus = 5,
         CPR_CursorPositionReport = 6,
     };
 
     enum PrivateModeParams : unsigned short
     {
         DECCKM_CursorKeysMode = 1,
+        DECANM_AnsiMode = 2,
         DECCOLM_SetNumberOfColumns = 3,
+        DECSCNM_ScreenMode = 5,
+        DECOM_OriginMode = 6,
+        DECAWM_AutoWrapMode = 7,
         ATT610_StartCursorBlink = 12,
         DECTCEM_TextCursorEnableMode = 25,
+        XTERM_EnableDECCOLMSupport = 40,
         VT200_MOUSE_MODE = 1000,
-        BUTTTON_EVENT_MOUSE_MODE = 1002,
+        BUTTON_EVENT_MOUSE_MODE = 1002,
         ANY_EVENT_MOUSE_MODE = 1003,
         UTF8_EXTENDED_MODE = 1005,
         SGR_EXTENDED_MODE = 1006,
         ALTERNATE_SCROLL = 1007,
-        ASB_AlternateScreenBuffer = 1049
+        ASB_AlternateScreenBuffer = 1049,
+        W32IM_Win32InputMode = 9001
     };
 
-    enum VTCharacterSets : wchar_t
+    namespace CharacterSets
     {
-        DEC_LineDrawing = L'0',
-        USASCII = L'B'
+        constexpr auto DecSpecialGraphics = std::make_pair(L'0', L'\0');
+        constexpr auto ASCII = std::make_pair(L'B', L'\0');
+    }
+
+    enum CodingSystem : wchar_t
+    {
+        ISO2022 = L'@',
+        UTF8 = L'G'
     };
 
     enum TabClearType : unsigned short
@@ -114,6 +135,13 @@ namespace Microsoft::Console::VirtualTerminal::DispatchTypes
         SteadyUnderline = 4,
         BlinkingBar = 5,
         SteadyBar = 6
+    };
+
+    enum class LineFeedType : unsigned int
+    {
+        WithReturn,
+        WithoutReturn,
+        DependsOnMode
     };
 
     constexpr short s_sDECCOLMSetColumns = 132;
